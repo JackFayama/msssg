@@ -2,129 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NovaFX Messaging</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NovaFX Realtime Chat</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f3f4f6;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .container {
-      width: 100%;
-      max-width: 500px;
-      background: white;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
-    h2 {
-      text-align: center;
-      color: #16a34a;
-    }
-    #chatBox {
-      height: 300px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 1rem;
-      background: #f9fafb;
-    }
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #16a34a;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
+    body { font-family: sans-serif; background: #f3f4f6; padding: 20px; }
+    .box { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
+    .chat-box { height: 300px; overflow-y: auto; background: #f9fafb; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+    .msg { margin-bottom: 6px; }
+    .sender { font-weight: bold; color: #16a34a; }
+    input, button { padding: 10px; width: 100%; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc; }
+    button { background: #16a34a; color: white; font-weight: bold; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>NovaFX Messaging</h2>
-    <div id="chatBox"></div>
-    <input type="text" id="receiverEmail" placeholder="Receiver Email (e.g., nelima@gmail.com)" />
-    <input type="text" id="messageInput" placeholder="Type your message..." />
-    <button onclick="sendMessage()">Send</button>
+  <div class="box">
+    <h2>NovaFX Live Chat</h2>
+    <div id="loginSection">
+      <input type="email" id="emailInput" placeholder="Enter your email (jack, nelima, judith)">
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div id="chatSection" style="display:none;">
+      <p>Logged in as: <strong id="myEmail"></strong></p>
+      <input type="text" id="receiverInput" placeholder="Send to (email)">
+      <div class="chat-box" id="chatBox"></div>
+      <input type="text" id="messageInput" placeholder="Type your message">
+      <button onclick="sendMessage()">Send</button>
+    </div>
   </div>
 
   <script>
-    const SUPABASE_URL = "https://qcfqwxnnidgwkjixqepo.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZnF3eG5uaWRnd2tqaXhxZXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0NDIsImV4cCI6MjA2NTY4NDQ0Mn0.fjUmcVffB1HlsrJ1Bu0HkLLH_BMBcK_gmDxjI7bjFOg";
+    const SUPABASE_URL = 'https://qcfqwxnnidgwkjixqepo.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZnF3eG5uaWRnd2tqaXhxZXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0NDIsImV4cCI6MjA2NTY4NDQ0Mn0.fjUmcVffB1HlsrJ1Bu0HkLLH_BMBcK_gmDxjI7bjFOg';
 
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const currentUser = localStorage.getItem("novaUser") || prompt("Enter your email (must match your registered NovaFX email):");
-    localStorage.setItem("novaUser", currentUser);
+    const allowedUsers = ['jack@gmail.com', 'nelima@gmail.com', 'judith@gmail.com'];
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const chatBox = document.getElementById("chatBox");
+    let currentUser = "";
 
-    async function loadMessages() {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error(error);
+    async function login() {
+      const email = document.getElementById("emailInput").value.trim().toLowerCase();
+      if (!allowedUsers.includes(email)) {
+        alert("Only allowed users can login.");
         return;
       }
-
-      chatBox.innerHTML = '';
-      data.forEach(msg => {
-        const div = document.createElement('div');
-        div.style.textAlign = msg.sender === currentUser ? 'right' : 'left';
-        div.innerHTML = `<strong>${msg.sender}</strong>: ${msg.message}`;
-        chatBox.appendChild(div);
-      });
-
-      chatBox.scrollTop = chatBox.scrollHeight;
+      currentUser = email;
+      document.getElementById("myEmail").textContent = currentUser;
+      document.getElementById("loginSection").style.display = "none";
+      document.getElementById("chatSection").style.display = "block";
+      subscribeToMessages();
+      loadChat();
     }
 
     async function sendMessage() {
-      const receiver = document.getElementById("receiverEmail").value.trim().toLowerCase();
+      const receiver = document.getElementById("receiverInput").value.trim().toLowerCase();
       const message = document.getElementById("messageInput").value.trim();
+      if (!receiver || !message) return alert("Enter recipient and message.");
+      if (!allowedUsers.includes(receiver)) return alert("Recipient not allowed.");
 
-      if (!receiver || !message) {
-        alert("Please enter both receiver email and message.");
-        return;
-      }
-
-      const { error } = await supabase
-        .from('messages')
-        .insert([{ sender: currentUser, receiver, message }]);
-
-      if (error) {
-        console.error("Send error:", error);
-      } else {
-        document.getElementById("messageInput").value = '';
-      }
+      await supabase.from('messages').insert([
+        { sender: currentUser, receiver, message }
+      ]);
+      document.getElementById("messageInput").value = "";
     }
 
-    supabase
-      .channel('messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        const msg = payload.new;
-        const div = document.createElement('div');
-        div.style.textAlign = msg.sender === currentUser ? 'right' : 'left';
-        div.innerHTML = `<strong>${msg.sender}</strong>: ${msg.message}`;
-        chatBox.appendChild(div);
-        chatBox.scrollTop = chatBox.scrollHeight;
-      })
-      .subscribe();
+    async function loadChat() {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .order('timestamp', { ascending: true })
+        .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`);
+      showMessages(data);
+    }
 
-    loadMessages();
+    function showMessages(messages) {
+      const chatBox = document.getElementById("chatBox");
+      chatBox.innerHTML = "";
+      messages.forEach(msg => {
+        const div = document.createElement("div");
+        div.className = "msg";
+        const direction = msg.sender === currentUser ? "You" : msg.sender;
+        div.innerHTML = `<span class="sender">${direction}:</span> ${msg.message}`;
+        chatBox.appendChild(div);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function subscribeToMessages() {
+      supabase
+        .channel('chat')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+          const msg = payload.new;
+          if (msg.sender === currentUser || msg.receiver === currentUser) {
+            const div = document.createElement("div");
+            div.className = "msg";
+            const direction = msg.sender === currentUser ? "You" : msg.sender;
+            div.innerHTML = `<span class="sender">${direction}:</span> ${msg.message}`;
+            document.getElementById("chatBox").appendChild(div);
+            document.getElementById("chatBox").scrollTop = document.getElementById("chatBox").scrollHeight;
+          }
+        })
+        .subscribe();
+    }
   </script>
 </body>
 </html>
