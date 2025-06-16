@@ -50,11 +50,14 @@
         alert("Only jack, nelima, and judith are allowed.");
         return;
       }
+
       localStorage.setItem("novaUser", email);
       currentUser = email;
-      document.getElementById("userDisplay").textContent = email;
+
+      document.getElementById("userDisplay").textContent = currentUser;
       document.getElementById("loginSection").style.display = "none";
       document.getElementById("chatSection").style.display = "block";
+
       loadMessages();
     }
 
@@ -75,7 +78,7 @@
     }
 
     async function loadMessages() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("messages")
         .select("*")
         .or(`sender.eq.${currentUser},receiver.eq.${currentUser}`)
@@ -101,8 +104,8 @@
       const storedUser = localStorage.getItem("novaUser");
       if (storedUser && allowedUsers.includes(storedUser)) {
         currentUser = storedUser;
-        document.getElementById("emailInput").value = storedUser;
-        document.getElementById("userDisplay").textContent = storedUser;
+        document.getElementById("emailInput").value = currentUser;
+        document.getElementById("userDisplay").textContent = currentUser;
         document.getElementById("loginSection").style.display = "none";
         document.getElementById("chatSection").style.display = "block";
         loadMessages();
