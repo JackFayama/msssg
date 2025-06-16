@@ -1,76 +1,130 @@
-<!-- Messaging UI -->
-<div class="container">
-  <h2>NovaFX Messaging</h2>
-  <div id="chatBox" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; border-radius: 8px;"></div>
-  
-  <input type="text" id="receiverEmail" placeholder="Receiver Email (e.g., nelima@gmail.com)">
-  <input type="text" id="messageInput" placeholder="Type your message...">
-  <button onclick="sendMessage()">Send</button>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NovaFX Messaging</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #16a34a;
+    }
+    #chatBox {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 1rem;
+      background: #f9fafb;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #16a34a;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>NovaFX Messaging</h2>
+    <div id="chatBox"></div>
+    <input type="text" id="receiverEmail" placeholder="Receiver Email (e.g., nelima@gmail.com)" />
+    <input type="text" id="messageInput" placeholder="Type your message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script>
-  const SUPABASE_URL = "https://qcfqwxnnidgwkjixqepo.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZnF3eG5uaWRnd2tqaXhxZXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0NDIsImV4cCI6MjA2NTY4NDQ0Mn0.fjUmcVffB1HlsrJ1Bu0HkLLH_BMBcK_gmDxjI7bjFOg";
+  <script>
+    const SUPABASE_URL = "https://qcfqwxnnidgwkjixqepo.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZnF3eG5uaWRnd2tqaXhxZXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0NDIsImV4cCI6MjA2NTY4NDQ0Mn0.fjUmcVffB1HlsrJ1Bu0HkLLH_BMBcK_gmDxjI7bjFOg";
 
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const currentUser = localStorage.getItem("novaUser") || prompt("Enter your email (must match your registered NovaFX email):");
+    localStorage.setItem("novaUser", currentUser);
 
-  const currentUser = localStorage.getItem("novaUser");
-  const chatBox = document.getElementById("chatBox");
+    const chatBox = document.getElementById("chatBox");
 
-  // Load past messages
-  async function loadMessages() {
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .order('created_at', { ascending: true });
+    async function loadMessages() {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-    chatBox.innerHTML = '';
-    data.forEach(msg => {
-      const isMine = msg.sender === currentUser;
-      const div = document.createElement('div');
-      div.style.textAlign = isMine ? 'right' : 'left';
-      div.innerHTML = `<strong>${msg.sender}</strong>: ${msg.message}`;
-      chatBox.appendChild(div);
-    });
+      if (error) {
+        console.error(error);
+        return;
+      }
 
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
+      chatBox.innerHTML = '';
+      data.forEach(msg => {
+        const div = document.createElement('div');
+        div.style.textAlign = msg.sender === currentUser ? 'right' : 'left';
+        div.innerHTML = `<strong>${msg.sender}</strong>: ${msg.message}`;
+        chatBox.appendChild(div);
+      });
 
-  loadMessages();
-
-  // Listen to new messages in real-time
-  supabase
-    .channel('messages')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-      const msg = payload.new;
-      const isMine = msg.sender === currentUser;
-      const div = document.createElement('div');
-      div.style.textAlign = isMine ? 'right' : 'left';
-      div.innerHTML = `<strong>${msg.sender}</strong>: ${msg.message}`;
-      chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
-    })
-    .subscribe();
-
-  // Send message function
-  async function sendMessage() {
-    const message = document.getElementById("messageInput").value.trim();
-    const receiver = document.getElementById("receiverEmail").value.trim().toLowerCase();
-
-    if (!message || !receiver) {
-      alert("Please enter both receiver email and message.");
-      return;
     }
 
-    const { error } = await supabase
-      .from('messages')
-      .insert([{ sender: currentUser, receiver: receiver, message: message }]);
+    async function sendMessage() {
+      const receiver = document.getElementById("receiverEmail").value.trim().toLowerCase();
+      const message = document.getElementById("messageInput").value.trim();
 
-    if (!error) {
-      document.getElementById("messageInput").value = '';
-    } else {
-      alert("Failed to send message.");
+      if (!receiver || !message) {
+        alert("Please enter both receiver email and message.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('messages')
+        .insert([{ sender: currentUser, receiver, message }]);
+
+      if (error) {
+        console.error("Send error:", error);
+      } else {
+        document.getElementById("messageInput").value = '';
+      }
     }
-  }
-</script>
+
+    supabase
+      .channel('messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        const msg = payload.new;
+        const div = document.createElement('div');
+        div.style.textAlign = msg.sender === currentUser ? 'right' : 'left';
+        div.innerHTML = `<strong>${msg.sender}</strong>: ${msg.message}`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      })
+      .subscribe();
+
+    loadMessages();
+  </script>
+</body>
+</html>
