@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NovaFX Chat</title>
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      background: #f9f9f9;
+    }
+    .chat-container {
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      border-left: 1px solid #ccc;
+      border-right: 1px solid #ccc;
+      background: #fff;
+    }
+    .chat-header {
+      padding: 1rem;
+      background: #ffffff;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .message {
+      padding: 0.75rem 1rem;
+      border-radius: 20px;
+      max-width: 80%;
+      word-wrap: break-word;
+      font-size: 0.95rem;
+    }
+    .sent {
+      align-self: flex-end;
+      background: #007aff;
+      color: white;
+    }
+    .received {
+      align-self: flex-start;
+      background: #e5e5ea;
+      color: black;
+    }
+    .input-bar {
+      display: flex;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid #eee;
+    }
+    .input-bar input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 0.6rem 1rem;
+      border-radius: 20px;
+      background: #f1f1f1;
+      margin-right: 0.5rem;
+    }
+    .input-bar button {
+      background: none;
+      border: none;
+      color: #007aff;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      display: none;
+      z-index: 9999;
+    }
+    .modal h3 {
+      margin: 0 0 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="chat-container">
+  <div class="chat-header">NovaFX Chat</div>
+  <div id="messages" class="messages"></div>
+  <div class="input-bar">
+    <input type="text" id="messageInput" placeholder="Type a message...">
+    <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+  </div>
+</div>
+<div class="modal" id="errorModal">
+  <h3>Error</h3>
+  <p id="errorText"></p>
+  <button onclick="closeModal()">OK</button>
+</div>
+<script>
+  const SUPABASE_URL = 'https://qcfqwxnnidgwkjixqepo.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZnF3eG5uaWRnd2tqaXhxZXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMDg0NDIsImV4cCI6MjA2NTY4NDQ0Mn0.fjUmcVffB1HlsrJ1Bu0HkLLH_BMBcK_gmDxjI7bjFOg';
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const sender = localStorage.getItem("novaUser") || prompt("Enter your email (e.g. jack@gmail.com)");
+  localStorage.setItem("novaUser", sender);
+  const receiver = prompt("Enter recipient's email (e.g. nelima@gmail.com)");
+
+  const messagesDiv = document.getElementById("messages");
+  const messageInput = document.getElementById("messageInput");
+
+  function showModal(message) {
+    document.getElementById("errorText").innerText = message;
+    document.getElementById("errorModal").style.display = 'block';
+  }
+
+  function closeModal() {
+    document.getElementById("errorModal").style.display = 'none';
+  }
+
+  async function sendMessage() {
+    const content = messageInput.value.trim();
+    if (!content) return;
+
+    const { error } = await supabase.from("messages").insert([
+      { sender, receiver, message: content }
+    ]);
+
+    if (error) return showModal(error.message);
+
+    messageInput.value = "";
+    addMessage(content, true);
+  }
+
+  function addMessage(text, isSender) {
+    const div = document.createElement("div");
+    div.className = "message " + (isSender ? "sent" : "received");
+    div.innerText = text;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  async function loadMessages() {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .or(`and(sender.eq.${sender},receiver.eq.${receiver}),and(sender.eq.${receiver},receiver.eq.${sender})`)
+      .order("id", { ascending: true });
+
+    if (error) return showModal(error.message);
+
+    data.forEach(msg => addMessage(msg.message, msg.sender === sender));
+  }
+
+  loadMessages();
+</script>
+</body>
+</html>
